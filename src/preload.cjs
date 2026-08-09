@@ -3,7 +3,8 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('daxie', {
   getState: () => ipcRenderer.invoke('state:get'),
   createQr: () => ipcRenderer.invoke('auth:create-qr'),
-  pollQr: key => ipcRenderer.invoke('auth:poll-qr', key),
+  pollQr: (key, session) => ipcRenderer.invoke('auth:poll-qr', key, session),
+  cancelQr: () => ipcRenderer.invoke('auth:cancel'),
   logout: () => ipcRenderer.invoke('auth:logout'),
   connect: roomId => ipcRenderer.invoke('live:connect', roomId),
   disconnect: () => ipcRenderer.invoke('live:disconnect'),

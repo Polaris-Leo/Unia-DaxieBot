@@ -1,5 +1,6 @@
 let state;
-let pollTimer;
+let loginModal;
+let loginFlow;
 let previewType = 'gift';
 let editingOverlay = false;
 let previewObserver;
@@ -36,8 +37,9 @@ function render(nextState) {
   const account = $('account');
   account.innerHTML = state.authenticated
     ? `<div>${state.user?.face ? `<img src="${state.user.face}">` : ''}<b>${state.user?.name || '已登录'}</b></div><button id="logout">退出登录</button>`
-    : '<span class="muted">尚未登录</span>';
+    : '<button id="openLogin" class="account-login" type="button"><span>扫码登录</span><small>登录哔哩哔哩账号</small></button>';
   if ($('logout')) $('logout').onclick = logout;
+  if ($('openLogin')) $('openLogin').onclick = () => loginModal.open();
   for (const id of configIds) {
     const element = $(id);
     if (!element) continue;
@@ -49,7 +51,6 @@ function render(nextState) {
   updateOutputs();
   updateStyleControlStates();
   renderStylePreview();
-  if (state.authenticated && !document.querySelector('#qrArea img')) $('qrArea').innerHTML = '<div class="waiting"><b>扫码登录成功</b><p>可连接直播间开始答谢</p></div>';
 }
 
 function updateOutputs() {
@@ -163,33 +164,10 @@ function renderStylePreview() {
   document.fonts?.ready.then(fitStylePreview);
 }
 
-async function makeQr() {
-  clearInterval(pollTimer);
-  $('qrArea').innerHTML = '<div class="waiting"><b>正在生成二维码…</b></div>';
-  try {
-    const qr = await window.daxie.createQr();
-    $('qrArea').innerHTML = `<div class="waiting"><img src="${qr.image}"><p id="qrStatus">请使用哔哩哔哩 App 扫码</p></div>`;
-    pollTimer = setInterval(async () => {
-      try {
-        const result = await window.daxie.pollQr(qr.key);
-        const text = {86101:'等待扫码',86090:'已扫码，请在手机上确认',86038:'二维码已过期'}[result.code] || result.message;
-        if ($('qrStatus')) $('qrStatus').textContent = text;
-        if (result.code === 0) { clearInterval(pollTimer); $('qrArea').innerHTML = '<div class="waiting"><b>登录成功</b><p>二维码已关闭，可以连接直播间</p></div>'; toast('登录成功'); }
-        if (result.code === 86038) clearInterval(pollTimer);
-      } catch (error) { if ($('qrStatus')) $('qrStatus').textContent = error.message; }
-    }, 1800);
-  } catch (error) {
-    $('qrArea').innerHTML = '<button id="qrBtn" class="primary">重新生成</button>';
-    $('qrBtn').onclick = makeQr;
-    toast(error.message);
-  }
-}
-
 async function logout() {
-  clearInterval(pollTimer);
+  loginFlow.stop();
   render(await window.daxie.logout());
-  $('qrArea').innerHTML = '<button id="qrBtn" class="primary">生成登录二维码</button>';
-  $('qrBtn').onclick = makeQr;
+  toast('已退出登录');
 }
 
 function collectConfigLegacy() {
@@ -244,6 +222,14 @@ installAdvancedStyleControls();
 installStylePreview();
 installOverlayTools();
 installObsQuality();
+loginModal = window.DaxieApp.createLoginModal(document, { onOpen: () => loginFlow.start(), onClose: () => loginFlow.stop(), onRetry: () => loginFlow.start() });
+loginFlow = window.DaxieApp.createLoginFlow({
+  createQr: () => window.daxie.createQr(),
+  pollQr: (key, session) => window.daxie.pollQr(key, session),
+  view: loginModal,
+  onStop: () => window.daxie.cancelQr(),
+  onSuccess: () => { loginModal.close(); toast('登录成功'); }
+});
 
 document.querySelectorAll('nav button').forEach(button => button.onclick = () => {
   document.querySelectorAll('nav button,.page').forEach(element => element.classList.remove('active'));
@@ -252,7 +238,6 @@ document.querySelectorAll('nav button').forEach(button => button.onclick = () =>
   [$('title').textContent, $('subtitle').textContent] = pageInfo[button.dataset.page];
 });
 
-$('qrBtn').onclick = makeQr;
 $('connectBtn').onclick = async () => {
   try {
     if (state?.connectionDesired || state?.connecting || state?.connected) { await window.daxie.disconnect(); toast('已断开直播间'); }
