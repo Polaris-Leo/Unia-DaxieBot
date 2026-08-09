@@ -9,11 +9,16 @@
     const status = document.getElementById('loginModalStatus');
     const retry = document.getElementById('loginModalRetry');
     const closeButton = document.getElementById('loginModalClose');
+    const app = document.querySelector('.app');
+    let previousFocus;
 
     function open() {
       modal.hidden = false;
       modal.setAttribute('aria-hidden', 'false');
       document.body.classList.add('modal-open');
+      previousFocus = document.activeElement;
+      app.inert = true;
+      closeButton.focus();
       callbacks.onOpen?.();
     }
 
@@ -21,6 +26,8 @@
       modal.hidden = true;
       modal.setAttribute('aria-hidden', 'true');
       document.body.classList.remove('modal-open');
+      app.inert = false;
+      previousFocus?.focus?.();
       callbacks.onClose?.();
     }
 
@@ -55,7 +62,16 @@
     retry.onclick = () => callbacks.onRetry?.();
     closeButton.onclick = close;
     modal.onclick = event => { if (event.target === modal) close(); };
-    document.addEventListener?.('keydown', event => { if (event.key === 'Escape' && !modal.hidden) close(); });
+    document.addEventListener?.('keydown', event => {
+      if (modal.hidden) return;
+      if (event.key === 'Escape') close();
+      if (event.key !== 'Tab') return;
+      const focusable = [...(modal.querySelectorAll?.('button:not([hidden]),[href],input,select,textarea,[tabindex]:not([tabindex="-1"])') || [])];
+      if (!focusable.length) return;
+      const first = focusable[0], last = focusable.at(-1);
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    });
 
     return { open, close, showLoading, showQr, setStatus, showFailure, showSuccess };
   }

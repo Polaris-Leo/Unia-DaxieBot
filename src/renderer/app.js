@@ -1,6 +1,6 @@
 let state;
-let pollTimer;
 let loginModal;
+let loginFlow;
 let previewType = 'gift';
 let editingOverlay = false;
 let previewObserver;
@@ -164,37 +164,8 @@ function renderStylePreview() {
   document.fonts?.ready.then(fitStylePreview);
 }
 
-async function makeQr() {
-  stopQrPolling();
-  loginModal.showLoading();
-  try {
-    const qr = await window.daxie.createQr();
-    loginModal.showQr(qr.image);
-    pollTimer = setInterval(async () => {
-      try {
-        const result = await window.daxie.pollQr(qr.key);
-        const text = {86101:'等待扫码',86090:'已扫码，请在手机上确认',86038:'二维码已过期'}[result.code] || result.message;
-        loginModal.setStatus(text);
-        if (result.code === 0) {
-          stopQrPolling(); loginModal.showSuccess();
-          setTimeout(() => { loginModal.close(); toast('登录成功'); }, 350);
-        } else if (result.code === 86038) {
-          stopQrPolling(); loginModal.showFailure(text);
-        }
-      } catch (error) { stopQrPolling(); loginModal.showFailure(error.message || '登录失败，请重试'); }
-    }, 1800);
-  } catch (error) {
-    loginModal.showFailure(error.message || '二维码生成失败，请重试');
-  }
-}
-
-function stopQrPolling() {
-  clearInterval(pollTimer);
-  pollTimer = null;
-}
-
 async function logout() {
-  stopQrPolling();
+  loginFlow.stop();
   render(await window.daxie.logout());
   toast('已退出登录');
 }
@@ -251,7 +222,14 @@ installAdvancedStyleControls();
 installStylePreview();
 installOverlayTools();
 installObsQuality();
-loginModal = window.DaxieApp.createLoginModal(document, { onOpen: makeQr, onClose: stopQrPolling, onRetry: makeQr });
+loginModal = window.DaxieApp.createLoginModal(document, { onOpen: () => loginFlow.start(), onClose: () => loginFlow.stop(), onRetry: () => loginFlow.start() });
+loginFlow = window.DaxieApp.createLoginFlow({
+  createQr: () => window.daxie.createQr(),
+  pollQr: (key, session) => window.daxie.pollQr(key, session),
+  view: loginModal,
+  onStop: () => window.daxie.cancelQr(),
+  onSuccess: () => { loginModal.close(); toast('登录成功'); }
+});
 
 document.querySelectorAll('nav button').forEach(button => button.onclick = () => {
   document.querySelectorAll('nav button,.page').forEach(element => element.classList.remove('active'));

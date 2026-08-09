@@ -20,6 +20,7 @@ const { createInstalledUpdater } = require('./main/update/installed-updater.cjs'
 const { registerUpdateIpc } = require('./main/update/ipc.cjs');
 const { detectRuntimeType } = require('./main/update/runtime.cjs');
 const { createShutdown } = require('./main/app-lifecycle.cjs');
+const { createAuthSession } = require('./main/auth-session.cjs');
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'asset', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } }]);
 
@@ -38,6 +39,7 @@ let overlayEditing = false;
 let boundsSaveTimer;
 let overlayResize = null;
 const browserClients = new Set();
+const authSessions = createAuthSession();
 const LOCAL_PORT = 17321;
 let dataFile;
 let fontsDir;
@@ -399,25 +401,36 @@ ipcMain.handle('appearance:set-theme', (_event, theme) => {
   return state.appearance;
 });
 ipcMain.handle('auth:create-qr', async () => {
+  const session = authSessions.begin();
   const res = await axios.get('https://passport.bilibili.com/x/passport-login/web/qrcode/generate', { headers: { 'User-Agent': UA, Referer: 'https://www.bilibili.com/' }, timeout: 10000 });
+  if (!authSessions.isActive(session)) throw new Error('登录请求已取消');
   if (res.data.code !== 0) throw new Error(res.data.message || '二维码生成失败');
   const { url, qrcode_key } = res.data.data;
-  return { key: qrcode_key, image: await QRCode.toDataURL(url, { width: 280, margin: 2 }) };
+  const image = await QRCode.toDataURL(url, { width: 280, margin: 2 });
+  if (!authSessions.isActive(session)) throw new Error('登录请求已取消');
+  return { key: qrcode_key, image, session };
 });
-ipcMain.handle('auth:poll-qr', async (_e, key) => {
+ipcMain.handle('auth:poll-qr', async (_e, key, session) => {
+  if (!authSessions.isActive(session)) return { code: 86038, message: '二维码已失效' };
   const res = await axios.get('https://passport.bilibili.com/x/passport-login/web/qrcode/poll', { params: { qrcode_key: key }, headers: { 'User-Agent': UA, Referer: 'https://www.bilibili.com/' }, timeout: 10000 });
+  if (!authSessions.isActive(session)) return { code: 86038, message: '二维码已失效' };
   const result = res.data.data;
   if (result.code === 0) {
     state.cookies = parseCookies(res.headers['set-cookie']);
     try {
       const finger = await axios.get('https://api.bilibili.com/x/frontend/finger/spi', { headers: { Cookie: cookieHeader(), 'User-Agent': UA, Referer: 'https://www.bilibili.com/' }, timeout: 7000 });
+      if (!authSessions.isActive(session)) return { code: 86038, message: '二维码已失效' };
       if (finger.data.code === 0) { state.cookies.buvid3 = finger.data.data.b_3; state.cookies.buvid4 = finger.data.data.b_4; }
     } catch {}
-    state.user = await getUser(); state.authenticated = true; state.status = '登录成功，请连接直播间'; save(); broadcast();
+    if (!authSessions.isActive(session)) return { code: 86038, message: '二维码已失效' };
+    const user = await getUser();
+    if (!authSessions.isActive(session)) return { code: 86038, message: '二维码已失效' };
+    state.user = user; state.authenticated = true; state.status = '登录成功，请连接直播间'; save(); broadcast();
   }
   return { code: result.code, message: result.message || '' };
 });
-ipcMain.handle('auth:logout', async () => { await disconnectLive(false); state.authenticated = false; state.user = null; state.cookies = {}; state.status = '请扫码登录'; save(); broadcast(); return publicState(); });
+ipcMain.handle('auth:cancel', () => { authSessions.invalidate(); if (!state.authenticated) state.cookies = {}; return true; });
+ipcMain.handle('auth:logout', async () => { authSessions.invalidate(); await disconnectLive(false); state.authenticated = false; state.user = null; state.cookies = {}; state.status = '请扫码登录'; save(); broadcast(); return publicState(); });
 ipcMain.handle('live:connect', (_e, id) => connectLive(id));
 ipcMain.handle('live:disconnect', async () => { await disconnectLive(); return publicState(); });
 ipcMain.handle('config:save', (_e, config) => { state.config = StyleUtils.normalizeStyleConfig({ ...state.config, ...config }); save(); broadcast(); return state.config; });
