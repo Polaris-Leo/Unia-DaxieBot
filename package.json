@@ -20,7 +20,7 @@
     "qrcode": "^1.5.4"
   },
   "devDependencies": {
-    "electron": "^37.2.4",
+    "electron": "37.10.3",
     "electron-builder": "^26.0.12"
   },
   "build": {

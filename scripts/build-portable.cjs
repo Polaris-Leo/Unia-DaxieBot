@@ -1,6 +1,7 @@
 const { spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const { isPortableArtifact } = require('./artifact-utils.cjs');
 
 const root = path.resolve(__dirname, '..');
 const temp = path.join(root, '.build-portable');
@@ -14,8 +15,11 @@ const result = spawnSync(process.execPath, [builderCli, '--win', 'portable', '--
   shell: false
 });
 
-const artifact = fs.existsSync(temp)
+const legacyArtifact = fs.existsSync(temp)
   ? fs.readdirSync(temp).find(name => /^Unia答谢助手-.*-便携版\.exe$/.test(name))
+  : null;
+const artifact = fs.existsSync(temp)
+  ? fs.readdirSync(temp).find(isPortableArtifact) || legacyArtifact
   : null;
 if (result.status !== 0 && !artifact) {
   if (result.error) console.error(result.error);
