@@ -1,6 +1,6 @@
 {
   "name": "unia-daxie-bot",
-  "version": "1.0.14",
+  "version": "1.0.1",
   "description": "仅保留答谢功能的 B 站直播桌面程序",
   "main": "src/main.cjs",
   "author": "Unia",
@@ -44,12 +44,13 @@
       "icon": "Unia-Icon.png"
     },
     "nsis": {
+      "artifactName": "Unia-DaxieBot-${version}-Setup.${ext}",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true
     },
     "portable": {
-      "artifactName": "Unia答谢助手-${version}-便携版.exe"
+      "artifactName": "Unia-DaxieBot-${version}-Portable.${ext}"
     }
   }
 }
