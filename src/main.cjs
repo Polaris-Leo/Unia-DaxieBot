@@ -9,6 +9,8 @@ const QRCode = require('qrcode');
 const fontkit = require('fontkit');
 const StyleUtils = require('./renderer/style-utils.js');
 const { normalizeRegistryFontNames } = require('./font-registry.cjs');
+const { parseCookies, normalizeGift } = require('./main/bilibili-utils.cjs');
+const { mime } = require('./main/http-utils.cjs');
 const { KeepLiveWS, getRoomid } = require('bilibili-live-ws');
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'asset', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } }]);
@@ -110,7 +112,7 @@ function setStatus(status, connected = state.connected) {
   state.status = status; state.connected = connected; save(); broadcast();
 }
 function cookieHeader() { return Object.entries(state.cookies).map(([k,v]) => `${k}=${v}`).join('; '); }
-function parseCookies(headers) {
+function parseCookiesLegacy(headers) {
   const result = {};
   for (const row of headers || []) {
     const pair = row.split(';', 1)[0];
@@ -156,7 +158,7 @@ async function getUser() {
   const u = res.data.data;
   return { uid: u.mid, name: u.uname, face: u.face };
 }
-function normalizeGift(raw) {
+function normalizeGiftLegacy(raw) {
   const cmd = String(raw.cmd || '').split(':')[0];
   const d = raw.data || {};
   if (cmd === 'SEND_GIFT') {
@@ -248,7 +250,7 @@ async function connectLive(roomId) {
   save(); broadcast();
   return openLiveConnection(clean, false);
 }
-function dispatchGiftFromMessage(raw) { dispatchGift(normalizeGift(raw)); }
+function dispatchGiftFromMessage(raw) { dispatchGift(normalizeGift(raw, state.config)); }
 function createWindows() {
   const appIcon = path.join(__dirname, '..', 'Unia-Icon.png');
   mainWindow = new BrowserWindow({ width: 1180, height: 800, minWidth: 920, minHeight: 650, backgroundColor: '#0c0d14', title: 'Unia答谢助手', icon: appIcon, webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false } });
@@ -268,7 +270,7 @@ function createWindows() {
   overlayWindow.on('resize', persistBounds);
   overlayWindow.on('closed', () => { overlayWindow = null; });
 }
-function mime(file) {
+function mimeLegacy(file) {
   return ({'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp','.gif':'image/gif','.mp3':'audio/mpeg','.wav':'audio/wav','.ogg':'audio/ogg','.m4a':'audio/mp4','.ttf':'font/ttf','.otf':'font/otf','.woff':'font/woff','.woff2':'font/woff2'})[path.extname(file).toLowerCase()] || 'application/octet-stream';
 }
 function startLocalServer() {
