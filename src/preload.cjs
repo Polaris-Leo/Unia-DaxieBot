@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('daxie', {
   connect: roomId => ipcRenderer.invoke('live:connect', roomId),
   disconnect: () => ipcRenderer.invoke('live:disconnect'),
   saveConfig: config => ipcRenderer.invoke('config:save', config),
+  setTheme: theme => ipcRenderer.invoke('appearance:set-theme', theme),
   chooseAsset: kind => ipcRenderer.invoke('asset:choose', kind),
   listFonts: () => ipcRenderer.invoke('fonts:list'),
   importFont: () => ipcRenderer.invoke('fonts:import'),

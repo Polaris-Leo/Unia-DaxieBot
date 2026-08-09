@@ -1,6 +1,6 @@
 {
   "name": "unia-daxie-bot",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "仅保留答谢功能的 B 站直播桌面程序",
   "main": "src/main.cjs",
   "author": "Unia",

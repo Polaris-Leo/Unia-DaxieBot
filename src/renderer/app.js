@@ -6,7 +6,7 @@ let previewObserver;
 let fontCatalog = { systemFonts: [], importedFonts: [] };
 const $ = id => document.getElementById(id);
 const configIds = ['imagePath','audioPath','audioEnabled','imageSize','fontSize','stayDuration','animationDuration','fontColor','highlightColor','strokeEnabled','strokeColor','strokeWidth','fontFamily','fontWeight','highlightKeywords','bubbleEnabled','bubbleStyle','bubbleOpacity','bubbleGradientEnabled','bubbleColor','bubbleColorSecondary','minPrice','ignoreFree','blindboxCalcOriginal','template','blindboxTemplate','guardTemplate','scTemplate'];
-const pageInfo = {live:['直播控制','扫码登录并连接一个 B 站直播间'],display:['答谢样式','设置桌面浮窗的素材、文字和动效'],rules:['礼物规则','决定哪些礼物触发答谢以及显示文案'],about:['使用说明','独立桌面版的快速使用指南']};
+const pageInfo = {live:['直播控制','扫码登录并连接一个 B 站直播间'],display:['答谢样式','设置桌面浮窗的素材、文字和动效'],rules:['礼物规则','决定哪些礼物触发答谢以及显示文案'],about:['使用说明','独立桌面版的快速使用指南'],settings:['设置','调整应用外观并管理程序更新']};
 
 function toast(text) {
   const element = $('toast');
@@ -17,6 +17,8 @@ function toast(text) {
 
 function render(nextState) {
   state = nextState;
+  window.DaxieApp.applyTheme(document, state.appearance?.theme);
+  if ($('appVersion')) $('appVersion').textContent = `v${state.appVersion || '—'}`;
   $('status').textContent = state.status;
   $('dot').classList.toggle('on', state.connected);
   $('roomId').value = state.roomId || '';
@@ -272,3 +274,5 @@ window.daxie.onGift(gift => toast(`已加入答谢：${gift.sender} · ${gift.gi
 window.daxie.getState().then(render);
 window.daxie.listFonts().then(catalog => { fontCatalog = catalog; registerImportedFonts(); rebuildFontOptions(state?.config); });
 window.DaxieApp.installUpdateControls(document, window.daxie);
+window.DaxieApp.installThemeControls(document, window.daxie);
+document.querySelector('.version-card a').onclick = event => { event.preventDefault(); window.open(event.currentTarget.href, '_blank', 'noopener'); };

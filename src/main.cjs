@@ -8,6 +8,7 @@ const axios = require('axios');
 const QRCode = require('qrcode');
 const fontkit = require('fontkit');
 const StyleUtils = require('./renderer/style-utils.js');
+const ThemeControls = require('./renderer/app/theme-controls.js');
 const { normalizeRegistryFontNames } = require('./font-registry.cjs');
 const { parseCookies, normalizeGift } = require('./main/bilibili-utils.cjs');
 const { mime } = require('./main/http-utils.cjs');
@@ -42,6 +43,7 @@ let dataFile;
 let fontsDir;
 let systemFontsCache;
 let state = {
+  appearance: { theme: 'light' },
   authenticated: false,
   user: null,
   cookies: {},
@@ -80,7 +82,7 @@ app.on('second-instance', () => {
 
 function publicState() {
   const { cookies, ...safe } = state;
-  return { ...safe, importedFonts: (safe.importedFonts || []).map(publicFont) };
+  return { ...safe, appVersion: app.getVersion(), importedFonts: (safe.importedFonts || []).map(publicFont) };
 }
 function save() {
   fs.mkdirSync(path.dirname(dataFile), { recursive: true });
@@ -263,7 +265,11 @@ async function connectLive(roomId) {
 function dispatchGiftFromMessage(raw) { dispatchGift(normalizeGift(raw, state.config)); }
 function createWindows() {
   const appIcon = path.join(__dirname, '..', 'Unia-Icon.png');
-  mainWindow = new BrowserWindow({ width: 1180, height: 800, minWidth: 920, minHeight: 650, backgroundColor: '#0c0d14', title: 'Unia答谢助手', icon: appIcon, webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false } });
+  mainWindow = new BrowserWindow({ width: 1180, height: 800, minWidth: 920, minHeight: 650, backgroundColor: '#f5f6fa', title: 'Unia答谢助手', icon: appIcon, webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false } });
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('https://github.com/Polaris-Leo/Unia-DaxieBot')) shell.openExternal(url);
+    return { action: 'deny' };
+  });
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
   mainWindow.on('close', event => {
     if (shuttingDown) return;
@@ -337,7 +343,7 @@ app.whenReady().then(() => {
   dataFile = path.join(app.getPath('userData'), 'settings.json');
   fontsDir = path.join(app.getPath('userData'), 'fonts');
   fs.mkdirSync(fontsDir, { recursive: true });
-  try { const old = JSON.parse(fs.readFileSync(dataFile, 'utf8').replace(/^\uFEFF/, '')); state = { ...state, ...old, importedFonts: Array.isArray(old.importedFonts) ? old.importedFonts : [], config: StyleUtils.normalizeStyleConfig({ ...state.config, ...(old.config || {}) }), connected: false }; } catch { state.config = StyleUtils.normalizeStyleConfig(state.config); }
+  try { const old = JSON.parse(fs.readFileSync(dataFile, 'utf8').replace(/^\uFEFF/, '')); state = { ...state, ...old, appearance: { theme: ThemeControls.normalizeTheme(old.appearance?.theme) }, importedFonts: Array.isArray(old.importedFonts) ? old.importedFonts : [], config: StyleUtils.normalizeStyleConfig({ ...state.config, ...(old.config || {}) }), connected: false }; } catch { state.config = StyleUtils.normalizeStyleConfig(state.config); }
   if (!state.overlayDefaultApplied) {
     state.overlayVisible = false;
     state.overlayDefaultApplied = true;
@@ -385,6 +391,12 @@ app.on('window-all-closed', () => {
 });
 
 ipcMain.handle('state:get', () => publicState());
+ipcMain.handle('appearance:set-theme', (_event, theme) => {
+  if (!['light', 'dark'].includes(theme)) throw new Error('不支持的主题');
+  state.appearance = { theme };
+  save(); broadcast();
+  return state.appearance;
+});
 ipcMain.handle('auth:create-qr', async () => {
   const res = await axios.get('https://passport.bilibili.com/x/passport-login/web/qrcode/generate', { headers: { 'User-Agent': UA, Referer: 'https://www.bilibili.com/' }, timeout: 10000 });
   if (res.data.code !== 0) throw new Error(res.data.message || '二维码生成失败');
