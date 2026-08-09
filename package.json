@@ -1,0 +1,55 @@
+{
+  "name": "unia-daxie-bot",
+  "version": "1.0.14",
+  "description": "仅保留答谢功能的 B 站直播桌面程序",
+  "main": "src/main.cjs",
+  "author": "Unia",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test --test-isolation=none test/*.test.cjs",
+    "start": "electron .",
+    "dev": "electron .",
+    "pack": "electron-builder --dir",
+    "build": "electron-builder --win nsis",
+    "build:portable": "node scripts/build-portable.cjs"
+  },
+  "dependencies": {
+    "axios": "^1.11.0",
+    "bilibili-live-ws": "^6.3.1",
+    "fontkit": "^2.0.4",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "electron": "^37.2.4",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.unia.daxiebot",
+    "productName": "Unia答谢助手",
+    "asar": true,
+    "compression": "normal",
+    "files": [
+      "src/**/*",
+      "package.json",
+      "Unia-Icon.png"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "Unia-Icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    },
+    "portable": {
+      "artifactName": "Unia答谢助手-${version}-便携版.exe"
+    }
+  }
+}

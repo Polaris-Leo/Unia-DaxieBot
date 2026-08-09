@@ -1,0 +1,25 @@
+const { contextBridge, ipcRenderer } = require('electron');
+
+contextBridge.exposeInMainWorld('daxie', {
+  getState: () => ipcRenderer.invoke('state:get'),
+  createQr: () => ipcRenderer.invoke('auth:create-qr'),
+  pollQr: key => ipcRenderer.invoke('auth:poll-qr', key),
+  logout: () => ipcRenderer.invoke('auth:logout'),
+  connect: roomId => ipcRenderer.invoke('live:connect', roomId),
+  disconnect: () => ipcRenderer.invoke('live:disconnect'),
+  saveConfig: config => ipcRenderer.invoke('config:save', config),
+  chooseAsset: kind => ipcRenderer.invoke('asset:choose', kind),
+  listFonts: () => ipcRenderer.invoke('fonts:list'),
+  importFont: () => ipcRenderer.invoke('fonts:import'),
+  setOverlay: visible => ipcRenderer.invoke('overlay:set-visible', visible),
+  setOverlayOptions: options => ipcRenderer.invoke('overlay:set-options', options),
+  setOverlayEditing: editing => ipcRenderer.invoke('overlay:set-editing', editing),
+  resetOverlayBounds: () => ipcRenderer.invoke('overlay:reset-bounds'),
+  beginOverlayResize: (direction, x, y) => ipcRenderer.send('overlay:resize-begin', { direction, x, y }),
+  updateOverlayResize: (x, y) => ipcRenderer.send('overlay:resize-update', { x, y }),
+  endOverlayResize: () => ipcRenderer.send('overlay:resize-end'),
+  testGift: kind => ipcRenderer.invoke('overlay:test', kind),
+  onState: callback => ipcRenderer.on('state', (_event, state) => callback(state)),
+  onGift: callback => ipcRenderer.on('gift', (_event, gift) => callback(gift)),
+  onOverlayEditing: callback => ipcRenderer.on('overlay-editing', (_event, editing) => callback(editing))
+});
