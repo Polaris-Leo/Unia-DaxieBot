@@ -17,6 +17,8 @@ const { createReleaseClient } = require('./main/update/release-client.cjs');
 const { createPortableDownloader } = require('./main/update/portable-downloader.cjs');
 const { createInstalledUpdater } = require('./main/update/installed-updater.cjs');
 const { registerUpdateIpc } = require('./main/update/ipc.cjs');
+const { detectRuntimeType } = require('./main/update/runtime.cjs');
+const { createShutdown } = require('./main/app-lifecycle.cjs');
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'asset', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } }]);
 
@@ -29,6 +31,8 @@ let liveGeneration = 0;
 let reconnectAttempts = 0;
 let localServer;
 let updateIpc;
+let shuttingDown = false;
+let shutdownApp = async () => app.exit(0);
 let overlayEditing = false;
 let boundsSaveTimer;
 let overlayResize = null;
@@ -261,6 +265,12 @@ function createWindows() {
   const appIcon = path.join(__dirname, '..', 'Unia-Icon.png');
   mainWindow = new BrowserWindow({ width: 1180, height: 800, minWidth: 920, minHeight: 650, backgroundColor: '#0c0d14', title: 'Unia答谢助手', icon: appIcon, webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false } });
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+  mainWindow.on('close', event => {
+    if (shuttingDown) return;
+    event.preventDefault();
+    shuttingDown = true;
+    shutdownApp();
+  });
   const savedBounds = state.overlayBounds || { width: 900, height: 650 };
   overlayWindow = new BrowserWindow({ x: savedBounds.x, y: savedBounds.y, width: Math.max(320, savedBounds.width || 900), height: Math.max(240, savedBounds.height || 650), minWidth: 320, minHeight: 240, transparent: true, frame: false, resizable: true, alwaysOnTop: true, skipTaskbar: true, show: state.overlayVisible, hasShadow: false, icon: appIcon, webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false } });
   overlayWindow.setIgnoreMouseEvents(true);
@@ -350,11 +360,29 @@ app.whenReady().then(() => {
   const releaseClient = createReleaseClient({ axios, currentVersion: app.getVersion() });
   const portableDownloader = createPortableDownloader({ axios, dialog, shell, app, emitProgress: emitUpdateProgress });
   const installedUpdater = createInstalledUpdater({ NsisUpdater, emitProgress: emitUpdateProgress });
-  updateIpc = registerUpdateIpc({ ipcMain, getWindow: () => mainWindow, releaseClient, portableDownloader, installedUpdater });
+  const runtimeType = detectRuntimeType(app, process.env);
+  updateIpc = registerUpdateIpc({ ipcMain, getWindow: () => mainWindow, releaseClient, portableDownloader, installedUpdater, runtimeType });
+  shutdownApp = createShutdown({
+    disconnectLive: () => disconnectLive(false),
+    disposeUpdates: () => updateIpc?.dispose(),
+    closeServer: () => localServer?.close(),
+    destroyOverlay: () => { if (overlayWindow && !overlayWindow.isDestroyed()) overlayWindow.destroy(); },
+    quit: () => app.exit(0)
+  });
   startLocalServer();
   if (state.authenticated && state.roomId) connectLive(state.roomId).catch(e => setStatus(e.message, false));
 });
-app.on('window-all-closed', () => { disconnectLive(false); updateIpc?.dispose(); localServer?.close(); app.quit(); });
+app.on('before-quit', event => {
+  if (shuttingDown) return;
+  event.preventDefault();
+  shuttingDown = true;
+  shutdownApp();
+});
+app.on('window-all-closed', () => {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  shutdownApp();
+});
 
 ipcMain.handle('state:get', () => publicState());
 ipcMain.handle('auth:create-qr', async () => {
