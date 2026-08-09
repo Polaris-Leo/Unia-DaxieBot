@@ -3,5 +3,6 @@ release/
 .build-portable/
 dist/
 .worktrees/
+.superpowers/
 *.log
 .DS_Store
