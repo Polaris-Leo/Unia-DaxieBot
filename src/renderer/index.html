@@ -16,7 +16,7 @@
   <main>
     <header><div><h1 id="title">直播控制</h1><p id="subtitle">扫码登录并连接一个 B 站直播间</p></div><div class="connection"><i id="dot"></i><span id="status">加载中…</span></div></header>
     <section id="live" class="page active">
-      <div class="grid two live-grid">
+      <div class="grid live-stack">
         <article class="card login-card"><h2>扫码登录</h2><p class="muted">仅支持哔哩哔哩 App 扫码登录</p><div id="qrArea" class="qr"><button id="qrBtn" class="primary">生成登录二维码</button></div><div id="loginActions"></div></article>
         <article class="card">
           <h2>直播间</h2><label>直播间号</label><div class="row"><input id="roomId" inputmode="numeric" placeholder="例如：123456"><button id="connectBtn" class="primary">连接</button></div><p class="hint">连接后仅监听付费礼物、盲盒、上舰和醒目留言。</p>

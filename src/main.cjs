@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, protocol, net, shell } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, dialog, protocol, net, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
@@ -340,6 +340,7 @@ function startLocalServer() {
 
 app.whenReady().then(() => {
   if (!gotSingleInstanceLock) return;
+  Menu.setApplicationMenu(null);
   dataFile = path.join(app.getPath('userData'), 'settings.json');
   fontsDir = path.join(app.getPath('userData'), 'fonts');
   fs.mkdirSync(fontsDir, { recursive: true });
