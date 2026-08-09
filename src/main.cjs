@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, protocol, net } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, protocol, net, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
@@ -12,6 +12,11 @@ const { normalizeRegistryFontNames } = require('./font-registry.cjs');
 const { parseCookies, normalizeGift } = require('./main/bilibili-utils.cjs');
 const { mime } = require('./main/http-utils.cjs');
 const { KeepLiveWS, getRoomid } = require('bilibili-live-ws');
+const { NsisUpdater } = require('electron-updater');
+const { createReleaseClient } = require('./main/update/release-client.cjs');
+const { createPortableDownloader } = require('./main/update/portable-downloader.cjs');
+const { createInstalledUpdater } = require('./main/update/installed-updater.cjs');
+const { registerUpdateIpc } = require('./main/update/ipc.cjs');
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'asset', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } }]);
 
@@ -23,6 +28,7 @@ let reconnectTimer;
 let liveGeneration = 0;
 let reconnectAttempts = 0;
 let localServer;
+let updateIpc;
 let overlayEditing = false;
 let boundsSaveTimer;
 let overlayResize = null;
@@ -340,10 +346,15 @@ app.whenReady().then(() => {
     return net.fetch(require('url').pathToFileURL(filePath).toString());
   });
   createWindows();
+  const emitUpdateProgress = progress => updateIpc?.send(progress);
+  const releaseClient = createReleaseClient({ axios, currentVersion: app.getVersion() });
+  const portableDownloader = createPortableDownloader({ axios, dialog, shell, app, emitProgress: emitUpdateProgress });
+  const installedUpdater = createInstalledUpdater({ NsisUpdater, emitProgress: emitUpdateProgress });
+  updateIpc = registerUpdateIpc({ ipcMain, getWindow: () => mainWindow, releaseClient, portableDownloader, installedUpdater });
   startLocalServer();
   if (state.authenticated && state.roomId) connectLive(state.roomId).catch(e => setStatus(e.message, false));
 });
-app.on('window-all-closed', () => { disconnectLive(false); localServer?.close(); app.quit(); });
+app.on('window-all-closed', () => { disconnectLive(false); updateIpc?.dispose(); localServer?.close(); app.quit(); });
 
 ipcMain.handle('state:get', () => publicState());
 ipcMain.handle('auth:create-qr', async () => {

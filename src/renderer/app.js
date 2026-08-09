@@ -271,3 +271,4 @@ window.daxie.onState(render);
 window.daxie.onGift(gift => toast(`已加入答谢：${gift.sender} · ${gift.gift}`));
 window.daxie.getState().then(render);
 window.daxie.listFonts().then(catalog => { fontCatalog = catalog; registerImportedFonts(); rebuildFontOptions(state?.config); });
+window.DaxieApp.installUpdateControls(document, window.daxie);

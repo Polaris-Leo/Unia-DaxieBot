@@ -1,6 +1,6 @@
 {
   "name": "unia-daxie-bot",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "仅保留答谢功能的 B 站直播桌面程序",
   "main": "src/main.cjs",
   "author": "Unia",
@@ -16,6 +16,7 @@
   "dependencies": {
     "axios": "^1.11.0",
     "bilibili-live-ws": "^6.3.1",
+    "electron-updater": "6.8.9",
     "fontkit": "^2.0.4",
     "qrcode": "^1.5.4"
   },
@@ -25,6 +26,7 @@
   },
   "build": {
     "appId": "com.unia.daxiebot",
+    "publish": [{ "provider": "github", "owner": "Polaris-Leo", "repo": "Unia-DaxieBot" }],
     "productName": "Unia答谢助手",
     "asar": true,
     "compression": "normal",

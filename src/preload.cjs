@@ -19,6 +19,13 @@ contextBridge.exposeInMainWorld('daxie', {
   updateOverlayResize: (x, y) => ipcRenderer.send('overlay:resize-update', { x, y }),
   endOverlayResize: () => ipcRenderer.send('overlay:resize-end'),
   testGift: kind => ipcRenderer.invoke('overlay:test', kind),
+  checkUpdates: source => ipcRenderer.invoke('update:check', source),
+  checkInstalledUpdate: source => ipcRenderer.invoke('update:check-installed', source),
+  downloadPortable: (assetId, source) => ipcRenderer.invoke('update:download-portable', assetId, source),
+  downloadInstalled: () => ipcRenderer.invoke('update:download-installed'),
+  installDownloadedUpdate: () => ipcRenderer.invoke('update:install'),
+  cancelUpdate: () => ipcRenderer.invoke('update:cancel'),
+  onUpdateProgress: callback => ipcRenderer.on('update:progress', (_event, progress) => callback(progress)),
   onState: callback => ipcRenderer.on('state', (_event, state) => callback(state)),
   onGift: callback => ipcRenderer.on('gift', (_event, gift) => callback(gift)),
   onOverlayEditing: callback => ipcRenderer.on('overlay-editing', (_event, editing) => callback(editing))
