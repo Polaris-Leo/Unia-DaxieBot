@@ -190,7 +190,7 @@ async function logout() {
   $('qrBtn').onclick = makeQr;
 }
 
-function collectConfig() {
+function collectConfigLegacy() {
   const config = {};
   for (const id of configIds) {
     const element = $(id);
@@ -206,8 +206,10 @@ function collectConfig() {
   return config;
 }
 
+const collectConfig = () => window.DaxieApp.collectConfig(document, configIds);
+
 async function saveConfig() {
-  await window.daxie.saveConfig(collectConfig());
+  await window.daxie.saveConfig(window.DaxieApp.collectConfig(document, configIds));
   toast('配置已保存');
 }
 
